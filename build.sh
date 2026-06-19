@@ -54,5 +54,5 @@ else
 fi
 
 if [[ $BUILD_PLATFORM != 0 ]]; then
-	clang-cl ${COMPILE_OPTIONS[@]} ../src/platform.c user32.lib gdi32.lib opengl32.lib /link /incremental:no /out:$APP_NAME.exe
+	clang-cl ${COMPILE_OPTIONS[@]} ../src/platform_win32.c /link user32.lib gdi32.lib opengl32.lib /incremental:no /out:$APP_NAME.exe
 fi

@@ -50,6 +50,10 @@ typedef struct String
 #define CONCAT_(A, B) CONCAT__(A, B)
 #define CONCAT(A, B) CONCAT_(A, B)
 
+#define STRINGIFY__(A) #A
+#define STRINGIFY_(A) STRINGIFY__(A)
+#define STRINGIFY(A) STRINGIFY_(A)
+
 #define ASSERT(EX) ((EX) ? (1) : ((*(volatile int*)0 = 0), 0))
 #define STATIC_ASSERT(EX, MSG) static_assert((EX), MSG)
 
@@ -66,3 +70,8 @@ String_Equal(String a, String b)
 
 	return result;
 }
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 240
+#define SCREEN_ASPECT_X 4
+#define SCREEN_ASPECT_Y 3
