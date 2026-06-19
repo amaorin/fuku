@@ -83,7 +83,7 @@ LoadWGLFunctions(String* required_extensions, umm required_extensions_len, PFNWG
 
 		u8* extension_string = (u8*)wglGetExtensionsStringARB(dummy_dc);
 
-		u64 required_extension_mask = 0;
+		u64 required_extension_mask = (1ULL << required_extensions_len) - 1;
 		ASSERT(required_extensions_len < sizeof(required_extension_mask)*8 &&  "too many required extensions for 64 bit mask");
 
 		u8* scan = extension_string;
@@ -104,11 +104,14 @@ LoadWGLFunctions(String* required_extensions, umm required_extensions_len, PFNWG
 
 			for (umm i = 0; i < required_extensions_len; ++i)
 			{
-				if (String_Equal(extension_name, required_extensions[i])) required_extension_mask |= (1ULL << i);
+				if ((required_extension_mask & (1ULL << i)) && String_Equal(extension_name, required_extensions[i]))
+				{
+					required_extension_mask ^= (1ULL << i);
+				}
 			}
 		}
 
-		if (required_extension_mask != (1ULL << required_extensions_len) - 1)
+		if (required_extension_mask != 0)
 		{
 			//// ERROR: Missing required extensions
 			break;
@@ -184,11 +187,8 @@ CreateGLContext(HWND window, HDC dc, PFNWGLCHOOSEPIXELFORMATARBPROC wglChoosePix
 static void
 GLDebugProc(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* user_param)
 {
-	//if (severity != GL_DEBUG_SEVERITY_NOTIFICATION)
-	{
-		OutputDebugStringA(message);
-		OutputDebugStringA("\n");
-	}
+	OutputDebugStringA(message);
+	OutputDebugStringA("\n");
 }
 
 typedef struct GL_State
@@ -234,8 +234,6 @@ InitOpenGL(HWND window, HDC dc, GL_State* gl_state)
 			GL_FUNC_LIST()
 #undef X
 
-		wglSwapIntervalEXT(1);
-
 #if USE_OPENGL_DEBUG_CONTEXT
 		glEnable(GL_DEBUG_OUTPUT);
 		glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
@@ -245,7 +243,9 @@ InitOpenGL(HWND window, HDC dc, GL_State* gl_state)
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+		// opengl for some reasons wants a default vertex array object
 		glCreateVertexArrays(1, &gl_state->vao);
+
 		glCreateTextures(GL_TEXTURE_2D, 1, &gl_state->texture);
 		glTextureParameteri(gl_state->texture, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTextureParameteri(gl_state->texture, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
@@ -392,17 +392,21 @@ wWinMain(HINSTANCE instance, HINSTANCE prev_instance, PWSTR command_line, int co
 		}
 
 		u32 pixels[SCREEN_WIDTH*SCREEN_HEIGHT] = {0};
-		for (umm i = 0; i < ARRAY_LEN(pixels); ++i) pixels[i] = (((i / SCREEN_WIDTH)/10 + (i % SCREEN_WIDTH)/10) % 2 == 0 ? 0xFF881188 : 0xFF888811);
+
+		for (umm i = 0; i < ARRAY_LEN(pixels); ++i)
+		{
+			pixels[i] = (((i / SCREEN_WIDTH)/10 + (i % SCREEN_WIDTH)/10) % 2 == 0 ? 0xFF881188 : 0xFF888811);
+		}
+
 		glTextureSubImage2D(gl_state.texture, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
-		{
+		{ // update viewport letterbox to fit intended aspect ratio
 			RECT client_rect;
 			GetClientRect(window, &client_rect);
 
 			s32 client_width  = client_rect.right - client_rect.left;
 			s32 client_height = client_rect.bottom - client_rect.top;
 
-			
 			s32 width_first  = (client_width  * SCREEN_ASPECT_Y) / SCREEN_ASPECT_X;
 			s32 height_first = (client_height * SCREEN_ASPECT_X) / SCREEN_ASPECT_Y;
 
